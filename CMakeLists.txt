@@ -14,10 +14,6 @@ if(BUILD_PYTHON)
   find_package(Boost REQUIRED COMPONENTS python numpy)
 endif()
 
-add_compile_options(-std=c++17)
-set(CMAKE_CXX_FLAGS -rdynamic)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
 find_package(reach REQUIRED)
 find_package(boost_plugin_loader REQUIRED)
 find_package(yaml-cpp REQUIRED)
@@ -37,6 +33,10 @@ foreach(dep ${ROS2_DEPS})
   find_package(${dep} REQUIRED)
 endforeach()
 
+# Create a variable list for storing exportable library target names Note: this list should not include plugin
+# libraries, which are not for linking
+set(TARGETS "")
+
 # Plugin Implementations
 add_library(
   ${PROJECT_NAME} SHARED
@@ -55,6 +55,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURR
                                                   $<INSTALL_INTERFACE:include>)
 target_link_libraries(${PROJECT_NAME} PUBLIC reach::reach)
 ament_target_dependencies(${PROJECT_NAME} PUBLIC ${ROS2_DEPS})
+list(APPEND TARGETS ${PROJECT_NAME})
 
 # Plugin Library
 add_library(${PROJECT_NAME}_plugins SHARED src/plugins.cpp)
@@ -68,11 +69,10 @@ ament_target_dependencies(${PROJECT_NAME}_node PUBLIC ${ROS2_DEPS})
 if(BUILD_PYTHON)
   message("Building Python bindings")
   add_subdirectory(src/python)
-  install(PROGRAMS demo/python/demo.py DESTINATION lib/${PROJECT_NAME})
 endif()
 
 # Install the libraries
-install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}-targets DESTINATION lib)
+install(TARGETS ${TARGETS} EXPORT ${PROJECT_NAME}-targets DESTINATION lib)
 install(TARGETS ${PROJECT_NAME}_plugins DESTINATION lib)
 
 # Install the executable(s)
@@ -85,4 +85,5 @@ install(DIRECTORY include/${PROJECT_NAME} DESTINATION include)
 install(DIRECTORY launch demo DESTINATION share/${PROJECT_NAME})
 
 ament_export_targets(${PROJECT_NAME}-targets HAS_LIBRARY_TARGET)
+ament_export_dependencies(${ROS2_DEPS})
 ament_package()
