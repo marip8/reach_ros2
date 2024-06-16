@@ -46,6 +46,8 @@ protected:
   const bool use_full_color_range_;
   const float hue_low_score_;
   const float hue_high_score_;
+
+  mutable reach::ReachResult db_;
   visualization_msgs::msg::Marker collision_marker_;
 
   // ROS comoponents

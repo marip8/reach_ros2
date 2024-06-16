@@ -42,8 +42,8 @@ ROSDisplay::ROSDisplay(std::string kinematic_base_frame, double marker_scale, bo
                                                                            reach_ros::utils::getNodeInstance());
   joint_state_pub_ =
       reach_ros::utils::getNodeInstance()->create_publisher<sensor_msgs::msg::JointState>(JOINT_STATES_TOPIC, 1);
-  mesh_pub_ =
-      reach_ros::utils::getNodeInstance()->create_publisher<visualization_msgs::msg::Marker>(MESH_MARKER_TOPIC, rclcpp::QoS(1).transient_local());
+  mesh_pub_ = reach_ros::utils::getNodeInstance()->create_publisher<visualization_msgs::msg::Marker>(
+      MESH_MARKER_TOPIC, rclcpp::QoS(1).transient_local());
   neighbors_pub_ =
       reach_ros::utils::getNodeInstance()->create_publisher<visualization_msgs::msg::Marker>(NEIGHBORS_MARKER_TOPIC, 1);
 }
@@ -68,10 +68,17 @@ void ROSDisplay::showResults(const reach::ReachResult& db) const
 {
   server_->clear();
 
+  // Copy the reach result once into a mutable member variable in order to use it within the lambda
+  // without having to copy it into every instance of the lambda (which gets expensive for > 300 points)
+  db_ = db;
+
   // Create a callback for when a marker is clicked on
-  auto show_goal_cb = [this, db](const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr& fb) {
-    std::size_t idx = std::strtoul(fb->marker_name.c_str(), nullptr, 10);
-    updateRobotPose(db.at(idx).goal_state);
+  auto show_goal_cb = [this](const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr& fb) {
+    if (fb->event_type == visualization_msgs::msg::InteractiveMarkerFeedback::MOUSE_UP)
+    {
+      std::size_t idx = std::strtoul(fb->marker_name.c_str(), nullptr, 10);
+      updateRobotPose(db_.at(idx).goal_state);
+    }
   };
 
   Eigen::MatrixX3f heatmap_colors =
